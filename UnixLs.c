@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
+extern int errno;
+
 void ls_func(const char *dir, int a, int b){
     
     DIR *directory = opendir(dir); //opens the directory. Included in dirent.h
