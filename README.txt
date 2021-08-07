@@ -1,6 +1,6 @@
 UNixLs will emulate the ls function with select flags on no sorting
 flags can be in any combination/order but must come before directory names
-static date format will be used 
+static date format will be used mmm dd yyyy hh:mm
 
 ls flags that will be implemented are -i, -l, -R
 
