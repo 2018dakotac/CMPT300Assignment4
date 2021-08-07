@@ -37,7 +37,7 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
         //memset(buf,'\0',BUFFER_SIZE);
         //Adapted from:stackoverflow.com/questions/13554150/implementing-the-ls-al-command-in-c
         sprintf(buf, "%s/%s", dir[1], mydir->d_name);
-        printf("calling stat on %s");
+        //printf("calling stat on %s",buf);
         stat(buf, &mystat);
         printf("%d", (int)mystat.st_size);//is this right cast?
         //For hidden files
