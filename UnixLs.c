@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
+
 
 extern int errno;
 
@@ -15,7 +17,7 @@ const int BUFFER_SIZE = 512;
 
 //Adopted from:iq.opengenus.org/ls-command-in-c/
 void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
-    printf("dir %s\n",dir);
+    
     DIR *directory = opendir(dir); //opens the directory. Included in dirent.h
     if(!directory){
         if(errno == ENOENT){
@@ -32,19 +34,49 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
     struct dirent *mydir;
     struct stat mystat;
     char buf[BUFFER_SIZE];
+    printf("%s:\n",dir);//should only print this if multiple paths passed
     // This loops run until an unreadable file is encountered
     while((mydir = readdir(directory)) != NULL){
         //memset(buf,'\0',BUFFER_SIZE);
         //Adapted from:stackoverflow.com/questions/13554150/implementing-the-ls-al-command-in-c
-        sprintf(buf, "%s/%s", dir[1], mydir->d_name);
-        //printf("calling stat on %s",buf);
-        stat(buf, &mystat);
-        printf("%d", (int)mystat.st_size);//is this right cast?
-        //For hidden files
-        if(mydir->d_name[0]== '.'){//ignore hidden files
+        sprintf(buf, "%s/%s", dir, mydir->d_name);
+        if(stat(buf, &mystat)==-1){
+            perror("stat:");
+        }
+        if(mydir->d_name[0]== '.'){//always ignore hidden files
             continue;
         }
-        printf("%s\n", mydir->d_name);
+        //check which mode bits are set using bitwise operation
+        ///https://stackoverflow.com/questions/10323060/printing-file-permissions-like-ls-l-using-stat2-in-c
+        printf( (S_ISDIR(mystat.st_mode)) ? "d" : "-");//*** check for links?
+        printf( (mystat.st_mode & S_IRUSR) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWUSR) ? "w" : "-");
+        printf( (mystat.st_mode & S_IXUSR) ? "x" : "-");
+        printf( (mystat.st_mode & S_IRGRP) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWGRP) ? "w" : "-");
+        printf( (mystat.st_mode & S_IXGRP) ? "x" : "-");
+        printf( (mystat.st_mode & S_IROTH) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWOTH) ? "w" : "-");
+        printf( (mystat.st_mode & S_IXOTH) ? "x" : "-");
+        printf(" %d", (int)mystat.st_nlink);//# hard links
+        //Need error checking for pw and grp to make sure >0
+        struct passwd *pw = NULL;
+        pw = getpwuid(mystat.st_uid);//user id
+        printf(" %s", pw->pw_name);
+        struct group *grp = NULL;
+        grp = getgrgid(mystat.st_gid); //group id
+        printf(" %s", grp->gr_name);
+        printf(" %d", (int)mystat.st_size); //size
+        //mmm dd yyyy hh:mm
+        char buff[20];
+        struct tm * timeinfo;
+        timeinfo = localtime (&mystat.st_mtime);
+        strftime(buff, sizeof(buff), "%b %d %H:%M", timeinfo);
+        printf(" %s",buff);
+        if(op_I){
+            printf("Inode: %d ",(int)mystat.st_ino);
+        }
+        printf(" %s\n", mydir->d_name);
         
         if(op_L){
             printf("\n");
@@ -109,3 +141,4 @@ int main (int argc, char *argv[]) {
     } 
 	return 0;
 }
+//TODO: double check casting for printf and properly format printing 
