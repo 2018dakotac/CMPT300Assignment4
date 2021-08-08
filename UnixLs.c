@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <grp.h>
 #include <pwd.h>
@@ -9,12 +7,30 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <time.h>
+#include <stdbool.h>
 
 
 extern int errno;
 
 const int BUFFER_SIZE = 512;
 const int NUM_FILES_PER_LINE = 10;
+
+bool is_recursive(const char* parent, char* currdir){
+    if(!strcmp('.', currdir) || !strcmp("..", currdir)){
+        return false;
+    }
+
+    char path[2048];
+    struct stat st;
+    sprintf(path, "%s/%s", parent, currdir);
+
+    if(lstat(path, &st) < 0){
+        perror(path);
+    }
+
+    return S_ISDIR(st.st_mode); // returns True if the file is a directory(to recurse subdirectories)
+
+}
 
 
 void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
@@ -31,13 +47,27 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
     struct dirent *mydir;
     struct stat mystat;
     char buf[BUFFER_SIZE];
+
     if(op_R){
-        printf("%s:\n",dir);
+        while((mydir = readdir(directory)) != NULL){
+            if(is_recursive(dir,mydir->d_name)){
+                char nextpath[1024];
+                if (mydir->d_name[0] == '.'){
+                    continue;
+                }
+                snprintf(nextpath, "%s/%s", dir, mydir->d_name);
+                printf("\n\n%s:\n", nextpath);
+                ls_func(nextpath, op_L, op_I, op_R); //recursive call if subdirectory encountered
+            }
+
+
+        }
+        closedir(directory);
     }
 
-    // This loops run until an unreadable file is encountered 
+    // This loop runs until an unreadable file is encountered 
     if(op_L){//long listing
-    // This loops run until an unreadable file is encountered 
+    // This loop runs until an unreadable file is encountered 
         while((mydir = readdir(directory)) != NULL){
             //Adapted from:stackoverflow.com/questions/13554150/implementing-the-ls-al-command-in-c
             sprintf(buf, "%s/%s", dir, mydir->d_name);
@@ -159,3 +189,5 @@ int main (int argc, char *argv[]) {
 }
 //TODO: double check casting for printf and properly format printing 
 //better recovery for unreadable files 
+
+
