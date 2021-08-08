@@ -1,4 +1,4 @@
-UNixLs will emulate the ls function with select flags on no sorting
+UnixLs will emulate the ls function with select flags on no sorting
 flags can be in any combination/order but must come before directory names
 static date format will be used mmm dd yyyy hh:mm
 
@@ -7,3 +7,7 @@ ls flags that will be implemented are -i, -l, -R
 -i, print the index number of each file
 -l, use a long listing format
 -R, list subdirectories recursively
+
+if multiple directories are entered flags will need to be specified for each directory 
+
+For regular UNixLs it will print 10 files a line
