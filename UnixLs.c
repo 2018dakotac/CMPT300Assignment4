@@ -14,12 +14,10 @@
 
 extern int errno;
 
-//const int BUFFER_SIZE = 512; 
-
-const int NUM_FILES_PER_LINE = 10;//for non long listing
+const int NUM_FILES_PER_LINE = 8;//for non long listing
 //NUM_FILES_PER_LINE will be divided by 2 if inode is printed
 
-const int PATH_MAX = 512;
+const int PATH_MAX_CONSTANT = 4096;//hard coding because PATH_MAX wasnt universal 
 
 
 
@@ -37,7 +35,7 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){
     }
     struct dirent *mydir;
     struct stat mystat;
-    char buf[PATH_MAX];
+    char buf[PATH_MAX_CONSTANT];
     if(op_R){
         printf("%s:\n", dir);
     }
@@ -90,7 +88,7 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){
             if(S_ISLNK(mystat.st_mode)){//check if link
                 int bufferSize = mystat.st_size+1; //+1 for null char
                 if(mystat.st_size == 0){//handle special symlink with size 0
-                    bufferSize = PATH_MAX;
+                    bufferSize = PATH_MAX_CONSTANT;
                 }
                 char * linkbuf = malloc(bufferSize);
                 if (linkbuf == NULL){
