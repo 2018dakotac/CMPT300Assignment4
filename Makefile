@@ -8,7 +8,7 @@ CFLAGS  = -g -Wall -ggdb
 #target is name of executable and my convention is to name the .c containing main the same as the executable
 TARGET = UnixLs
 #TARGET = infodemo
-OBJ = $(TARGET).o list.o
+OBJ = $(TARGET).o
 LDFLAG = -lm 
 #linker flag^ if needed
 all: $(TARGET)
