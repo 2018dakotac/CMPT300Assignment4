@@ -8,6 +8,4 @@ ls flags that will be implemented are -i, -l, -R
 -l, use a long listing format
 -R, list subdirectories recursively
 
-if multiple directories are entered flags will need to be specified for each directory 
 
-For regular UNixLs it will print 10 files a line
