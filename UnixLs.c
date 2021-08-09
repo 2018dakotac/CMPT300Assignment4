@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <grp.h>
 #include <pwd.h>
 #include <dirent.h>
@@ -8,71 +9,44 @@
 #include <errno.h>
 #include <time.h>
 #include <stdbool.h>
+#include <string.h>
 
 
 extern int errno;
 
-const int BUFFER_SIZE = 512;
-const int NUM_FILES_PER_LINE = 10;
+//const int BUFFER_SIZE = 512; 
 
-bool is_recursive(const char* parent, char* currdir){
-    if(!strcmp('.', currdir) || !strcmp("..", currdir)){
-        return false;
-    }
-
-    char path[2048];
-    struct stat st;
-    sprintf(path, "%s/%s", parent, currdir);
-
-    if(lstat(path, &st) < 0){
-        perror(path);
-    }
-
-    return S_ISDIR(st.st_mode); // returns True if the file is a directory(to recurse subdirectories)
-
-}
+const int NUM_FILES_PER_LINE = 10;//for non long listing
+//NUM_FILES_PER_LINE will be divided by 2 if inode is printed
 
 
-void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
-    
+
+void ls_func(char* dir, int op_L, int op_I, int op_R){
     DIR *directory = opendir(dir); //opens the directory. Included in dirent.h
     if(!directory){//basic error checking
         if(errno == ENOENT){
-            perror("Directory does not exist"); //Not found //print dir
+            printf("%s\n",dir);
+            perror("UnixLs"); //Not found
         }else{
-            perror("Directory is Unreadable"); //No read permission //***** should just print dir and not exit
+            printf("%s\n",dir);
+            perror("UnixLs"); //No read permission 
         }
         return;//exit(EXIT_FAILURE);
     }
     struct dirent *mydir;
     struct stat mystat;
-    char buf[BUFFER_SIZE];
-
+    char buf[PATH_MAX];
     if(op_R){
-        while((mydir = readdir(directory)) != NULL){
-            if(is_recursive(dir,mydir->d_name)){
-                char nextpath[1024];
-                if (mydir->d_name[0] == '.'){
-                    continue;
-                }
-                snprintf(nextpath, "%s/%s", dir, mydir->d_name);
-                printf("\n\n%s:\n", nextpath);
-                ls_func(nextpath, op_L, op_I, op_R); //recursive call if subdirectory encountered
-            }
-
-
-        }
-        closedir(directory);
+        printf("%s:\n", dir);
     }
-
     // This loop runs until an unreadable file is encountered 
     if(op_L){//long listing
     // This loop runs until an unreadable file is encountered 
         while((mydir = readdir(directory)) != NULL){
-            //Adapted from:stackoverflow.com/questions/13554150/implementing-the-ls-al-command-in-c
             sprintf(buf, "%s/%s", dir, mydir->d_name);
-            if(stat(buf, &mystat)==-1){
-                perror("stat:");
+            if(lstat(buf, &mystat)==-1){
+                perror("lstat()");
+                return;
             }
             if(mydir->d_name[0]== '.'){//always ignore hidden files
                 continue;
@@ -82,7 +56,11 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
             }
             //check which mode bits are set using bitwise operation
             //Code adapted from https://stackoverflow.com/questions/10323060
-            printf( (S_ISDIR(mystat.st_mode)) ? "d" : "-");// check for links?*************************************************************
+            if(S_ISLNK(mystat.st_mode)){
+                printf("l");
+            }else{
+            printf( (S_ISDIR(mystat.st_mode)) ? "d" : "-");
+            }
             printf( (mystat.st_mode & S_IRUSR) ? "r" : "-");
             printf( (mystat.st_mode & S_IWUSR) ? "w" : "-");
             printf( (mystat.st_mode & S_IXUSR) ? "x" : "-");
@@ -106,8 +84,29 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
             timeinfo = localtime (&mystat.st_mtime);
             strftime(buff, sizeof(buff), " %b %d %H:%M ", timeinfo);//mmm dd yyyy hh:mm
             printf("%-8s",buff);
-            printf("%-8s\n", mydir->d_name);
-            //printf("\n");
+            printf("%-8s", mydir->d_name);
+            if(S_ISLNK(mystat.st_mode)){//check if link
+                int bufferSize = mystat.st_size+1; //+1 for null char
+                if(mystat.st_size == 0){//handle special symlink with size 0
+                    bufferSize = PATH_MAX;
+                }
+                char * linkbuf = malloc(bufferSize);
+                if (linkbuf == NULL){
+                    perror("malloc");
+                    exit(EXIT_FAILURE);
+                }
+                memset(linkbuf,'\0',bufferSize);
+                size_t nbytes = readlink(buf,linkbuf,bufferSize-1);
+                if((int)nbytes == -1){
+                    perror("readlink");
+                    //exit(EXIT_FAILURE);
+                }else{
+                    //linkbuf[bufferSize-1] = '\0'; may as well play it safe with memset
+                    printf(" -> %s",linkbuf);
+                }
+                free(linkbuf);
+            }
+            printf("\n");
         }
     }else{//not long listing
     int count = 0;
@@ -117,12 +116,17 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
             }
             if(op_I){
                 sprintf(buf, "%s/%s", dir, mydir->d_name);
-                if(stat(buf, &mystat)==-1){
-                    perror("stat:");
+                if(lstat(buf, &mystat)==-1){
+                    perror("lstat()");
+                    return;
                 }
-                printf("%d  ",mystat.st_ino);
+                printf("%-6d ",(int)mystat.st_ino);
             }
-            printf("%s  ", mydir->d_name);
+            printf("%-10s ", mydir->d_name);
+            if(op_I && count == NUM_FILES_PER_LINE/2){
+                printf("\n");
+                count = 0;
+            }
             if(count == NUM_FILES_PER_LINE){
                 printf("\n");
                 count = 0;
@@ -130,9 +134,25 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){//should dir be const?
                 count++;
             }
         }
-        
         printf("\n");
-    }    
+    }
+    printf("\n");
+    if(op_R){
+        rewinddir(directory);// rewind directory stream
+         while((mydir = readdir(directory)) != NULL){//iterate through looking for directories
+            if (mydir->d_name[0] == '.'){//ignore hiddin files 
+                continue;
+            }
+            sprintf(buf, "%s/%s", dir, mydir->d_name);
+            if(lstat(buf, &mystat)==-1){
+                perror("lstat()");
+                return;
+            }      
+            if(S_ISDIR(mystat.st_mode)){//check if directory
+                ls_func(buf, op_L, op_I, op_R);
+            }
+        }
+    }   
     closedir(directory);
 }
 
@@ -187,7 +207,5 @@ int main (int argc, char *argv[]) {
     } 
 	return 0;
 }
-//TODO: double check casting for printf and properly format printing 
-//better recovery for unreadable files 
 
 
