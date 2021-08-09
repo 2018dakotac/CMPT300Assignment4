@@ -55,7 +55,7 @@ void ls_func(char* dir, int op_L, int op_I, int op_R){
                 printf("%5d ",(int)mystat.st_ino);
             }
             //check which mode bits are set using bitwise operation
-            //Code adapted from https://stackoverflow.com/questions/10323060
+            //Permission printing code adapted from https://stackoverflow.com/questions/10323060
             if(S_ISLNK(mystat.st_mode)){
                 printf("l");
             }else{
