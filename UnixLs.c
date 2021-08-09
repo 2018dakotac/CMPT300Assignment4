@@ -19,6 +19,8 @@ extern int errno;
 const int NUM_FILES_PER_LINE = 10;//for non long listing
 //NUM_FILES_PER_LINE will be divided by 2 if inode is printed
 
+const int PATH_MAX = 512;
+
 
 
 void ls_func(char* dir, int op_L, int op_I, int op_R){
@@ -200,12 +202,62 @@ int main (int argc, char *argv[]) {
 			}
 			ls_func(argv[2],op_L,op_I,op_R);
     } 
-    else { //argc is >3 
-        //Handle printing "dir:" for -l here only if recursive is set to false*
-        //need loop to iterate through command line input 
-        //also probably need error checking on bad input
-    } 
+    
+    else{
+        int i=2;
+        int op_L = 0, op_I = 0,op_R = 0;
+        char *p = (char*)(argv[1] + 1); //second argument will always be a flag or permutation of flags
+		while(*p){
+			if(*p == 'l') op_L = 1;
+			else if(*p == 'i') op_I = 1;
+            else if( *p == 'R') op_R = 1;
+			else{
+                perror("Option not available");
+				exit(EXIT_FAILURE);
+			}
+			p++;
+		}
+        while(i < (argc-1)){
+            if(((char*)argv[i])[0] == '-'){
+            //check if argument is a flag or directory
+                char *a = (char*)(argv[i] + 1);
+			    while(*a){
+				    if(*a == 'l') op_L = 1;
+				    else if(*a == 'i') op_I = 1;
+                    else if(*a == 'R') op_R = 1;
+				    else{
+					    printf("Incorrect flags\n");
+					    exit(EXIT_FAILURE);
+				    }
+				    a++;
+			    }
+
+            }else{
+                ls_func(argv[i],op_L,op_I,op_R);
+            }
+            i++;
+
+        }
+        if(((char*)argv[(argc-1)])[0] == '-'){
+            //if last argument is not a directory then send current directory as argument
+            char *a = (char*)(argv[2] + 1);
+			while(*a){
+				if(*a == 'l') op_L = 1;
+				else if(*a == 'i') op_I = 1;
+                else if(*a == 'R') op_R = 1;
+				else{
+					printf("Incorrect flags\n");
+					exit(EXIT_FAILURE);
+				}
+				a++;
+                ls_func(".",op_L,op_I,op_R);
+			}
+
+        }else{
+            ls_func(argv[(argc-1)],op_L,op_I,op_R);
+        }
+
+    }
 	return 0;
 }
-
 
